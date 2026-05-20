@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C2 Intel Feeds</title>
+  <style>
+    :root {
+      --bg:          #f5f7fa;
+      --surface:     #ffffff;
+      --border:      #dee2e6;
+      --text:        #1a1d23;
+      --muted:       #6c757d;
+      --accent:      #e63946;
+      --accent2:     #457b9d;
+      --row-even:    #f8f9fa;
+      --row-hover:   #fff3cd;
+      --tag-bg:      #e9ecef;
+      --warn-bg:     #fff8e1;
+      --warn-border: #ffc107;
+      --c7d:         #2ea043;
+      --c30d:        #457b9d;
+      --c90d:        #8250df;
+      --shadow:      0 2px 8px rgba(0,0,0,.08);
+      --radius:      8px;
+    }
+    [data-theme="dark"] {
+      --bg:          #0d1117;
+      --surface:     #161b22;
+      --border:      #30363d;
+      --text:        #e6edf3;
+      --muted:       #8b949e;
+      --accent:      #ff6b6b;
+      --accent2:     #79c0ff;
+      --row-even:    #1c2128;
+      --row-hover:   #2d2f1e;
+      --tag-bg:      #21262d;
+      --warn-bg:     #2a2000;
+      --warn-border: #d29922;
+      --c7d:         #3fb950;
+      --c30d:        #79c0ff;
+      --c90d:        #bc8cff;
+      --shadow:      0 2px 8px rgba(0,0,0,.4);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; transition: background .2s, color .2s;
+    }
+
+    /* Header */
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem; display: flex; align-items: center; gap: 1rem;
+      height: 56px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100;
+    }
+    .logo {
+      display: flex; align-items: center; gap: .5rem;
+      font-weight: 700; font-size: 1.05rem; color: var(--accent);
+      text-decoration: none; white-space: nowrap;
+    }
+    header .spacer { flex: 1; }
+    .theme-btn {
+      background: var(--tag-bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 20px; padding: .28rem .7rem; cursor: pointer; font-size: .82rem;
+      display: flex; align-items: center; gap: .3rem; white-space: nowrap;
+    }
+    .theme-btn:hover { background: var(--border); }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex; background: var(--tag-bg);
+      border: 1px solid var(--border); border-radius: 7px; overflow: hidden;
+    }
+    .mode-tab {
+      padding: .28rem .8rem; font-size: .8rem; font-weight: 600;
+      cursor: pointer; border: none; background: none; color: var(--muted);
+      transition: background .12s, color .12s;
+    }
+    .mode-tab.active { background: var(--accent2); color: #fff; }
+
+    /* Main */
+    main {
+      max-width: 1500px; margin: 0 auto;
+      padding: 1.1rem 1.5rem; display: flex; flex-direction: column; gap: .9rem;
+    }
+
+    /* Banner */
+    .banner {
+      display: none; border-radius: var(--radius);
+      padding: .6rem 1rem; font-size: .81rem;
+    }
+    .banner.warn {
+      background: var(--warn-bg); border: 1px solid var(--warn-border);
+    }
+    .banner strong { color: var(--warn-border); }
+
+    /* Stats */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: .6rem;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .75rem .95rem; box-shadow: var(--shadow);
+    }
+    .stat-card .lbl {
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); margin-bottom: .18rem;
+    }
+    .stat-card .val {
+      font-size: 1.4rem; font-weight: 700; color: var(--accent2);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-card .sub { font-size: .7rem; color: var(--muted); margin-top: .08rem; }
+
+    /* Controls */
+    .controls {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: .8rem .95rem;
+      box-shadow: var(--shadow); display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end;
+    }
+    .ctrl-group { display: flex; flex-direction: column; gap: .22rem; flex: 1 1 170px; }
+    .ctrl-group > label { font-size: .72rem; color: var(--muted); font-weight: 600; }
+    select, input[type="text"] {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: .4rem .6rem; font-size: .86rem; width: 100%; outline: none;
+      transition: border-color .12s;
+    }
+    select:focus, input[type="text"]:focus { border-color: var(--accent2); }
+
+    /* Progress */
+    .gsearch-progress {
+      display: none; align-items: center; gap: .5rem;
+      font-size: .78rem; color: var(--muted); padding: .3rem 0;
+    }
+    .gsearch-progress.visible { display: flex; }
+    .pb-wrap { flex: 1; background: var(--tag-bg); border-radius: 4px; height: 5px; overflow: hidden; }
+    .pb { height: 100%; background: var(--accent2); width: 0%; transition: width .1s; border-radius: 4px; }
+
+    /* Pagination */
+    .pager {
+      display: flex; align-items: center; gap: .4rem;
+      flex-wrap: wrap; margin-left: auto;
+    }
+    .pager span { font-size: .78rem; color: var(--muted); white-space: nowrap; }
+    .pager button {
+      background: var(--tag-bg); border: 1px solid var(--border); color: var(--text);
+      border-radius: 5px; padding: .26rem .55rem; cursor: pointer; font-size: .78rem;
+    }
+    .pager button:disabled { opacity: .4; cursor: default; }
+    .pager button:not(:disabled):hover { background: var(--border); }
+    .pager select { width: auto; padding: .26rem .42rem; font-size: .78rem; }
+
+    /* Table */
+    .table-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      overflow: auto; max-height: 68vh;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    thead th {
+      position: sticky; top: 0; background: var(--surface);
+      border-bottom: 2px solid var(--border); padding: .52rem .78rem;
+      text-align: left; font-size: .7rem; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--muted); white-space: nowrap;
+      cursor: pointer; user-select: none; z-index: 2;
+    }
+    thead th:hover { color: var(--text); }
+    .sa { margin-left: .22rem; opacity: .4; }
+    .sort-asc  .sa::after { content: " ▲"; opacity: 1; }
+    .sort-desc .sa::after { content: " ▼"; opacity: 1; }
+    th:not(.sort-asc):not(.sort-desc) .sa::after { content: " ⇅"; }
+
+    tbody tr:nth-child(even) { background: var(--row-even); }
+    tbody tr:hover { background: var(--row-hover); }
+    td {
+      padding: .42rem .78rem; border-bottom: 1px solid var(--border);
+      max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    td.wc { white-space: normal; word-break: break-all; }
+
+    /* Feed-family badge */
+    .fam-badge {
+      display: inline-block; background: var(--tag-bg); border: 1px solid var(--border);
+      border-radius: 4px; padding: .06rem .38rem; font-size: .67rem; color: var(--muted);
+      vertical-align: middle; white-space: nowrap; text-decoration: none;
+    }
+    a.fam-badge:hover { border-color: var(--accent2); color: var(--accent2); background: color-mix(in srgb, var(--accent2) 8%, transparent); }
+    .fam-badge.uv { border-color: var(--warn-border); color: var(--warn-border); }
+    a.fam-badge.uv:hover { background: color-mix(in srgb, var(--warn-border) 8%, transparent); }
+
+    /* Recency pills */
+    .recency { display: flex; gap: .25rem; align-items: center; flex-wrap: nowrap; }
+    .pill {
+      display: inline-block; border-radius: 10px;
+      padding: .1rem .42rem; font-size: .7rem; font-weight: 700;
+      border: 1px solid; white-space: nowrap;
+    }
+    .pill.p7  { color: var(--c7d);  border-color: var(--c7d);  background: color-mix(in srgb, var(--c7d) 12%, transparent); }
+    .pill.p30 { color: var(--c30d); border-color: var(--c30d); background: color-mix(in srgb, var(--c30d) 12%, transparent); }
+    .pill.p90 { color: var(--c90d); border-color: var(--c90d); background: color-mix(in srgb, var(--c90d) 12%, transparent); }
+    .pill.dim { opacity: .22; font-weight: 400; }
+
+    /* IOC */
+    .ioc-badge {
+      display: inline-block; background: var(--tag-bg); border-radius: 4px;
+      padding: .06rem .38rem; font-size: .7rem; color: var(--muted);
+      max-width: 260px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle;
+    }
+
+    .ip-link { color: var(--accent2); text-decoration: none; font-weight: 600; }
+    .ip-link:hover { text-decoration: underline; }
+    .modat-label {
+      display: inline-block; font-size: .65rem; font-weight: 700;
+      color: var(--accent2); opacity: .7; vertical-align: middle;
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .ip-links { display: inline-flex; gap: .22rem; vertical-align: middle; }
+    .ip-pill {
+      display: inline-block; border-radius: 10px;
+      padding: .08rem .38rem; font-size: .67rem; font-weight: 700;
+      border: 1px solid var(--accent2); color: var(--accent2);
+      background: color-mix(in srgb, var(--accent2) 10%, transparent);
+      text-decoration: none; white-space: nowrap;
+      transition: background .12s, color .12s;
+    }
+    .ip-pill:hover { background: var(--accent2); color: #fff; }
+
+    mark { background: #ffe08a; color: inherit; border-radius: 2px; }
+    [data-theme="dark"] mark { background: #5a4a00; }
+
+    /* Copy */
+    .copy-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      border-radius: 4px; padding: .1rem .38rem; cursor: pointer; font-size: .7rem;
+      white-space: nowrap; transition: color .12s, border-color .12s;
+    }
+    .copy-btn:hover { color: var(--accent2); border-color: var(--accent2); }
+    .copy-btn.ok { color: #2ea043; border-color: #2ea043; }
+
+    /* Status */
+    .status-msg { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: .93rem; }
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 3px solid var(--border); border-top-color: var(--accent2);
+      border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .35rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Legend */
+    .legend {
+      display: flex; gap: .6rem; flex-wrap: wrap; align-items: center;
+      font-size: .74rem; color: var(--muted); padding: .2rem 0;
+    }
+    .legend-item { display: flex; align-items: center; gap: .28rem; }
+
+    footer { text-align: center; font-size: .74rem; color: var(--muted); padding: .9rem; }
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      header { padding: 0 .7rem; gap: .45rem; }
+      main   { padding: .7rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+    </svg>
+    C2 Intel Feeds
+  </a>
+  <div class="mode-tabs">
+    <button class="mode-tab"        id="tabSingle" onclick="setMode('single')">Single Feed</button>
+    <button class="mode-tab active" id="tabGlobal" onclick="setMode('global')">Search All Feeds</button>
+  </div>
+  <span class="spacer"></span>
+  <button class="theme-btn" id="themeToggle">
+    <span id="themeIcon">🌙</span><span id="themeLabel">Dark</span>
+  </button>
+</header>
+
+<main>
+
+  <div class="banner warn" id="uvBanner">
+    <strong>&#9888; Unverified data included:</strong>
+    These IOCs have not been confirmed as malicious C2 infrastructure and may
+    include legitimate security tooling (Interactsh, Hak5, PiKVM, etc.).
+    Validate before acting.
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="lbl">Mode</div>
+      <div class="val" id="statMode">Single</div>
+      <div class="sub" id="statModeSub">browse one feed</div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">Total Records</div>
+      <div class="val" id="statTotal">—</div>
+      <div class="sub" id="statTotalSub">in feed</div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">Matching</div>
+      <div class="val" id="statMatching">—</div>
+      <div class="sub">after filter</div>
+    </div>
+    <div class="stat-card">
+      <div class="lbl">Feeds Searched</div>
+      <div class="val" id="statFeeds">—</div>
+      <div class="sub" id="statFeedsSub">—</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <!-- Single: feed picker -->
+    <div class="ctrl-group" id="singleWrap">
+      <label>Feed</label>
+      <select id="feedSelect"></select>
+    </div>
+
+    <!-- Global: category filter -->
+    <div class="ctrl-group" id="catWrap" style="display:none">
+      <label>Categories</label>
+      <select id="catSelect">
+        <option value="all">All (verified + unverified)</option>
+        <option value="verified">Verified only</option>
+        <option value="unverified">Unverified only</option>
+        <option value="c2">C2 only</option>
+        <option value="kvm">KVM only</option>
+        <option value="rmm">RMM only</option>
+      </select>
+    </div>
+
+    <!-- Search box -->
+    <div class="ctrl-group" style="flex: 2 1 240px;">
+      <label id="searchLbl">Search / Filter</label>
+      <input type="text" id="searchInput" placeholder="Filter any column…"
+             autocomplete="off" spellcheck="false" />
+    </div>
+
+    <!-- Pagination -->
+    <div class="pager">
+      <span>Rows</span>
+      <select id="pageSz">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="250">250</option>
+        <option value="0">All</option>
+      </select>
+      <button id="prevBtn" disabled>&#8249;</button>
+      <span id="pageInfo">—</span>
+      <button id="nextBtn" disabled>&#8250;</button>
+    </div>
+  </div>
+
+  <!-- Progress bar (global mode) -->
+  <div class="gsearch-progress" id="gsprog">
+    <span class="spinner"></span>
+    <span id="gsLbl">Loading…</span>
+    <div class="pb-wrap"><div class="pb" id="pb"></div></div>
+    <span id="gsCnt"></span>
+  </div>
+
+  <!-- Legend (global mode) -->
+  <div class="legend" id="legend" style="display:none">
+    <strong style="color:var(--text)">Recency:</strong>
+    <span class="legend-item"><span class="pill p7">7d</span> seen in last 7 days</span>
+    <span class="legend-item"><span class="pill p30">30d</span> seen in last 30 days (not 7d)</span>
+    <span class="legend-item"><span class="pill p90">90d</span> seen in last 90 days (not 30d)</span>
+    <span style="margin-left:.3rem;color:var(--muted)">— dimmed pill = not present in that window</span>
+  </div>
+
+  <div class="table-wrap" id="tableWrap">
+    <div class="status-msg">Select a feed above to load data, or use
+      <strong>Search All Feeds</strong> to query across everything.</div>
+  </div>
+
+</main>
+
+<footer>
+  Data sourced from
+  <a href="https://github.com/drb-ra/C2IntelFeeds" target="_blank" rel="noopener">drb-ra/C2IntelFeeds</a>
+  — fetched live from GitHub raw CSV.
+</footer>
+
+<script>
+'use strict';
+
+// ─── Feed catalogue ────────────────────────────────────────────────────────────
+const BASE    = 'https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/';
+const BASE_UV = BASE + 'unverified/';
+
+/*
+ * Each entry: { label, file, base, tags[], unverified, window }
+ * window: '7d' | '30d' | '90d'
+ * The no-suffix files are the 7-day (most-recent) window per the upstream README.
+ */
+const FEEDS = [
+  // ── Verified ──────────────────────────────────────────────────────────────
+  // IP
+  {label:'IPC2s',           file:'IPC2s.csv',              base:BASE,    tags:['c2'], uv:false, win:'7d'},
+  {label:'IPC2s',           file:'IPC2s-30day.csv',        base:BASE,    tags:['c2'], uv:false, win:'30d'},
+  {label:'IPC2s',           file:'IPC2s-90day.csv',        base:BASE,    tags:['c2'], uv:false, win:'90d'},
+  // IP+Port
+  {label:'IPPortC2s',       file:'IPPortC2s.csv',          base:BASE,    tags:['c2'], uv:false, win:'7d'},
+  {label:'IPPortC2s',       file:'IPPortC2s-30day.csv',    base:BASE,    tags:['c2'], uv:false, win:'30d'},
+  {label:'IPPortC2s',       file:'IPPortC2s-90day.csv',    base:BASE,    tags:['c2'], uv:false, win:'90d'},
+  // Domain
+  {label:'domainC2s',               file:'domainC2s.csv',                        base:BASE, tags:['c2'], uv:false, win:'7d'},
+  {label:'domainC2s',               file:'domainC2s-30day.csv',                  base:BASE, tags:['c2'], uv:false, win:'30d'},
+  {label:'domainC2s',               file:'domainC2s-90day.csv',                  base:BASE, tags:['c2'], uv:false, win:'90d'},
+  {label:'domainC2s-filter-abused', file:'domainC2s-filter-abused.csv',          base:BASE, tags:['c2'], uv:false, win:'7d'},
+  {label:'domainC2s-filter-abused', file:'domainC2s-30day-filter-abused.csv',    base:BASE, tags:['c2'], uv:false, win:'30d'},
+  {label:'domainC2s-filter-abused', file:'domainC2s-90day-filter-abused.csv',    base:BASE, tags:['c2'], uv:false, win:'90d'},
+  // Domain+URL
+  {label:'domainC2s+URL',               file:'domainC2swithURL.csv',                        base:BASE, tags:['c2'], uv:false, win:'7d'},
+  {label:'domainC2s+URL',               file:'domainC2swithURL-30day.csv',                  base:BASE, tags:['c2'], uv:false, win:'30d'},
+  {label:'domainC2s+URL',               file:'domainC2swithURL-90day.csv',                  base:BASE, tags:['c2'], uv:false, win:'90d'},
+  {label:'domainC2s+URL-filter-abused', file:'domainC2swithURL-filter-abused.csv',          base:BASE, tags:['c2'], uv:false, win:'7d'},
+  {label:'domainC2s+URL-filter-abused', file:'domainC2swithURL-30day-filter-abused.csv',    base:BASE, tags:['c2'], uv:false, win:'30d'},
+  {label:'domainC2s+URL-filter-abused', file:'domainC2swithURL-90day-filter-abused.csv',    base:BASE, tags:['c2'], uv:false, win:'90d'},
+  // Domain+URL+IP
+  {label:'domainC2s+URL+IP',               file:'domainC2swithURLwithIP.csv',                     base:BASE, tags:['c2'], uv:false, win:'7d'},
+  {label:'domainC2s+URL+IP',               file:'domainC2swithURLwithIP-30day.csv',               base:BASE, tags:['c2'], uv:false, win:'30d'},
+  {label:'domainC2s+URL+IP',               file:'domainC2swithURLwithIP-90day.csv',               base:BASE, tags:['c2'], uv:false, win:'90d'},
+  {label:'domainC2s+URL+IP-filter-abused', file:'domainC2swithURLwithIP-filter-abused.csv',       base:BASE, tags:['c2'], uv:false, win:'7d'},
+  {label:'domainC2s+URL+IP-filter-abused', file:'domainC2swithURLwithIP-30day-filter-abused.csv', base:BASE, tags:['c2'], uv:false, win:'30d'},
+  {label:'domainC2s+URL+IP-filter-abused', file:'domainC2swithURLwithIP-90day-filter-abused.csv', base:BASE, tags:['c2'], uv:false, win:'90d'},
+  // DNS
+  {label:'DNSC2Domains', file:'DNSC2Domains.csv',       base:BASE, tags:['c2'], uv:false, win:'7d'},
+  {label:'DNSC2Domains', file:'DNSC2Domains-30day.csv', base:BASE, tags:['c2'], uv:false, win:'30d'},
+
+  // ── Unverified C2 ─────────────────────────────────────────────────────────
+  {label:'[UV] IPC2s',         file:'IPC2s.csv',              base:BASE_UV, tags:['c2'], uv:true, win:'7d'},
+  {label:'[UV] IPC2s',         file:'IPC2s-30day.csv',        base:BASE_UV, tags:['c2'], uv:true, win:'30d'},
+  {label:'[UV] IPC2s',         file:'IPC2s-90day.csv',        base:BASE_UV, tags:['c2'], uv:true, win:'90d'},
+  {label:'[UV] IPPortC2s',     file:'IPPortC2s.csv',          base:BASE_UV, tags:['c2'], uv:true, win:'7d'},
+  {label:'[UV] IPPortC2s',     file:'IPPortC2s-30day.csv',    base:BASE_UV, tags:['c2'], uv:true, win:'30d'},
+  {label:'[UV] IPPortC2s',     file:'IPPortC2s-90day.csv',    base:BASE_UV, tags:['c2'], uv:true, win:'90d'},
+  {label:'[UV] DomainC2s',     file:'DomainC2s.csv',          base:BASE_UV, tags:['c2'], uv:true, win:'7d'},
+  {label:'[UV] DomainC2s',     file:'DomainC2s-30day.csv',    base:BASE_UV, tags:['c2'], uv:true, win:'30d'},
+  {label:'[UV] DomainC2s',     file:'DomainC2s-90day.csv',    base:BASE_UV, tags:['c2'], uv:true, win:'90d'},
+  {label:'[UV] DomainPortC2s', file:'DomainPortC2s.csv',      base:BASE_UV, tags:['c2'], uv:true, win:'7d'},
+  {label:'[UV] DomainPortC2s', file:'DomainPortC2s-30day.csv',base:BASE_UV, tags:['c2'], uv:true, win:'30d'},
+  {label:'[UV] DomainPortC2s', file:'DomainPortC2s-90day.csv',base:BASE_UV, tags:['c2'], uv:true, win:'90d'},
+
+  // ── Unverified KVM ────────────────────────────────────────────────────────
+  {label:'[UV] IPKVM',         file:'IPKVM.csv',              base:BASE_UV, tags:['kvm'], uv:true, win:'7d'},
+  {label:'[UV] IPKVM',         file:'IPKVM-30day.csv',        base:BASE_UV, tags:['kvm'], uv:true, win:'30d'},
+  {label:'[UV] IPKVM',         file:'IPKVM-90day.csv',        base:BASE_UV, tags:['kvm'], uv:true, win:'90d'},
+  {label:'[UV] IPPortKVM',     file:'IPPortKVM.csv',          base:BASE_UV, tags:['kvm'], uv:true, win:'7d'},
+  {label:'[UV] IPPortKVM',     file:'IPPortKVM-30day.csv',    base:BASE_UV, tags:['kvm'], uv:true, win:'30d'},
+  {label:'[UV] IPPortKVM',     file:'IPPortKVM-90day.csv',    base:BASE_UV, tags:['kvm'], uv:true, win:'90d'},
+  {label:'[UV] DomainKVM',     file:'DomainKVM.csv',          base:BASE_UV, tags:['kvm'], uv:true, win:'7d'},
+  {label:'[UV] DomainKVM',     file:'DomainKVM-30day.csv',    base:BASE_UV, tags:['kvm'], uv:true, win:'30d'},
+  {label:'[UV] DomainKVM',     file:'DomainKVM-90day.csv',    base:BASE_UV, tags:['kvm'], uv:true, win:'90d'},
+  {label:'[UV] DomainPortKVM', file:'DomainPortKVM.csv',      base:BASE_UV, tags:['kvm'], uv:true, win:'7d'},
+  {label:'[UV] DomainPortKVM', file:'DomainPortKVM-30day.csv',base:BASE_UV, tags:['kvm'], uv:true, win:'30d'},
+  {label:'[UV] DomainPortKVM', file:'DomainPortKVM-90day.csv',base:BASE_UV, tags:['kvm'], uv:true, win:'90d'},
+
+  // ── Unverified RMM ────────────────────────────────────────────────────────
+  {label:'[UV] IPRMM',         file:'IPRMM.csv',              base:BASE_UV, tags:['rmm'], uv:true, win:'7d'},
+  {label:'[UV] IPRMM',         file:'IPRMM-30day.csv',        base:BASE_UV, tags:['rmm'], uv:true, win:'30d'},
+  {label:'[UV] IPRMM',         file:'IPRMM-90day.csv',        base:BASE_UV, tags:['rmm'], uv:true, win:'90d'},
+  {label:'[UV] IPPortRMM',     file:'IPPortRMM.csv',          base:BASE_UV, tags:['rmm'], uv:true, win:'7d'},
+  {label:'[UV] IPPortRMM',     file:'IPPortRMM-30day.csv',    base:BASE_UV, tags:['rmm'], uv:true, win:'30d'},
+  {label:'[UV] IPPortRMM',     file:'IPPortRMM-90day.csv',    base:BASE_UV, tags:['rmm'], uv:true, win:'90d'},
+  {label:'[UV] DomainRMM',     file:'DomainRMM.csv',          base:BASE_UV, tags:['rmm'], uv:true, win:'7d'},
+  {label:'[UV] DomainRMM',     file:'DomainRMM-30day.csv',    base:BASE_UV, tags:['rmm'], uv:true, win:'30d'},
+  {label:'[UV] DomainRMM',     file:'DomainRMM-90day.csv',    base:BASE_UV, tags:['rmm'], uv:true, win:'90d'},
+  {label:'[UV] DomainPortRMM', file:'DomainPortRMM.csv',      base:BASE_UV, tags:['rmm'], uv:true, win:'7d'},
+  {label:'[UV] DomainPortRMM', file:'DomainPortRMM-30day.csv',base:BASE_UV, tags:['rmm'], uv:true, win:'30d'},
+  {label:'[UV] DomainPortRMM', file:'DomainPortRMM-90day.csv',base:BASE_UV, tags:['rmm'], uv:true, win:'90d'},
+];
+
+// Distinct feed families for single-feed dropdown
+// (label + base uniquely identify a family; we show one entry per family with all 3 windows)
+function familyKey(f) { return f.base + '|' + f.label; }
+
+// ─── State ─────────────────────────────────────────────────────────────────────
+let mode     = 'single';
+let allRows  = [], headers = [], filtered = [];
+let sortCol  = null, sortDir = 'asc';
+let page = 1, pageSize = 50;
+let abortGlobal = false;
+
+// ─── Theme ─────────────────────────────────────────────────────────────────────
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('themeIcon').textContent  = dark ? '☀️' : '🌙';
+  document.getElementById('themeLabel').textContent = dark ? 'Light' : 'Dark';
+  localStorage.setItem('c2theme', dark ? 'dark' : 'light');
+}
+(function () {
+  const s = localStorage.getItem('c2theme');
+  applyTheme(s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches);
+})();
+document.getElementById('themeToggle').addEventListener('click', () =>
+  applyTheme(document.documentElement.dataset.theme !== 'dark'));
+
+// ─── Build single-feed <select> ────────────────────────────────────────────────
+(function buildSelect() {
+  const sel = document.getElementById('feedSelect');
+  // Collect families in declaration order, deduplicated
+  const famOrder = [], famSeen = new Set();
+  FEEDS.forEach((f, i) => {
+    const k = familyKey(f);
+    if (!famSeen.has(k)) { famSeen.add(k); famOrder.push({ f, idx: i }); }
+  });
+
+  // Each family gets 3 options: 7d, 30d, 90d
+  const winSuffix = { '7d': ' — 7 day', '30d': ' — 30 day', '90d': ' — 90 day' };
+  const groupDefs = [
+    { name: 'Verified — IP',            match: f => !f.uv && (f.label.startsWith('IPC2') || f.label.startsWith('IPPort')) },
+    { name: 'Verified — Domain',        match: f => !f.uv && f.label.startsWith('domain') && !f.label.includes('URL') },
+    { name: 'Verified — Domain+URL',    match: f => !f.uv && f.label.includes('+URL') && !f.label.includes('+IP') },
+    { name: 'Verified — Domain+URL+IP', match: f => !f.uv && f.label.includes('+IP') },
+    { name: 'Verified — DNS',           match: f => !f.uv && f.label.startsWith('DNS') },
+    { name: 'Unverified — C2',          match: f => f.uv && f.tags.includes('c2') },
+    { name: 'Unverified — KVM',         match: f => f.uv && f.tags.includes('kvm') },
+    { name: 'Unverified — RMM',         match: f => f.uv && f.tags.includes('rmm') },
+  ];
+
+  groupDefs.forEach(gd => {
+    const members = famOrder.filter(({ f }) => gd.match(f));
+    if (!members.length) return;
+    const og = document.createElement('optgroup');
+    og.label = gd.name;
+    members.forEach(({ f: fam }) => {
+      // find all 3 windows
+      ['7d','30d','90d'].forEach(w => {
+        const entry = FEEDS.find(x => familyKey(x) === familyKey(fam) && x.win === w);
+        if (!entry) return;
+        const idx = FEEDS.indexOf(entry);
+        const o = document.createElement('option');
+        o.value = idx;
+        o.textContent = fam.label + winSuffix[w];
+        og.appendChild(o);
+      });
+    });
+    sel.appendChild(og);
+  });
+})();
+
+// ─── Mode switch ───────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('tabSingle').classList.toggle('active', m === 'single');
+  document.getElementById('tabGlobal').classList.toggle('active', m === 'global');
+  document.getElementById('singleWrap').style.display = m === 'single' ? '' : 'none';
+  document.getElementById('catWrap').style.display    = m === 'global' ? '' : 'none';
+  document.getElementById('legend').style.display     = m === 'global' ? '' : 'none';
+  document.getElementById('searchLbl').textContent    = m === 'global' ? 'Search term (press Enter)' : 'Search / Filter';
+  document.getElementById('searchInput').placeholder  = m === 'global' ? 'IP, domain, keyword…' : 'Filter any column…';
+  document.getElementById('statMode').textContent     = m === 'single' ? 'Single' : 'Global';
+  document.getElementById('statModeSub').textContent  = m === 'single' ? 'browse one feed' : 'all feeds + windows';
+  abortGlobal = true;
+  allRows = []; headers = []; filtered = [];
+  resetStats();
+  document.getElementById('uvBanner').style.display = 'none';
+  document.getElementById('gsprog').classList.remove('visible');
+  if (m === 'single') {
+    setTableMsg('Select a feed above.');
+    const idx = document.getElementById('feedSelect').value;
+    if (idx !== '') loadFeed(FEEDS[parseInt(idx, 10)]);
+  } else {
+    setTableMsg('Enter a search term and press <strong>Enter</strong> to search across all feeds and time windows.');
+  }
+}
+
+// ─── CSV helpers ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const out = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const row = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
+      else if (ch===',' && !inQ) { row.push(cur); cur=''; }
+      else cur += ch;
+    }
+    row.push(cur);
+    out.push(row);
+  }
+  return out;
+}
+
+function csvToObjects(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) return { headers:[], rows:[] };
+  const hdrs = rows[0].map(h => h.replace(/^#/,'').trim());
+  const objs = rows.slice(1)
+    .map(r => { const o={}; hdrs.forEach((h,i)=>{ o[h]=(r[i]||'').trim(); }); return o; })
+    .filter(r => Object.values(r).some(v=>v));
+  return { headers: hdrs, rows: objs };
+}
+
+const cache = {};
+async function fetchCSV(url) {
+  if (cache[url]) return cache[url];
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const t = await res.text();
+  cache[url] = t;
+  return t;
+}
+
+// ─── Single feed mode ──────────────────────────────────────────────────────────
+async function loadFeed(f) {
+  abortGlobal = true;
+  setTableMsg(`<span class="spinner"></span>Loading <strong>${escH(f.label)} — ${f.win}</strong>…`);
+  resetStats();
+  document.getElementById('uvBanner').style.display = f.uv ? '' : 'none';
+  let text;
+  try { text = await fetchCSV(f.base + f.file); }
+  catch(e) { setTableMsg(`Failed to load: ${escH(e.message)}`); return; }
+  const { headers: hdrs, rows } = csvToObjects(text);
+  if (!hdrs.length) { setTableMsg('Feed is empty or unparseable.'); return; }
+  headers = hdrs; allRows = rows; sortCol = null; sortDir = 'asc'; page = 1;
+  document.getElementById('statTotal').textContent    = rows.length.toLocaleString();
+  document.getElementById('statTotalSub').textContent = f.win + ' window';
+  document.getElementById('statFeeds').textContent    = '1';
+  document.getElementById('statFeedsSub').textContent = f.label;
+  applyFilter();
+}
+
+function applyFilter() {
+  const raw = defang(document.getElementById('searchInput').value);
+  document.getElementById('searchInput').value = raw;
+  const q = raw.toLowerCase();
+  filtered = q
+    ? allRows.filter(r => headers.some(h => (r[h]||'').toLowerCase().includes(q)))
+    : [...allRows];
+  if (sortCol) sortFiltered();
+  page = 1;
+  renderTable();
+}
+
+function sortFiltered() {
+  filtered.sort((a,b) => {
+    const cmp = (a[sortCol]||'').localeCompare(b[sortCol]||'', undefined, {numeric:true, sensitivity:'base'});
+    return sortDir==='asc' ? cmp : -cmp;
+  });
+}
+
+// ─── Global search ─────────────────────────────────────────────────────────────
+/*
+ * Strategy:
+ *  1. Group FEEDS by (base, family-label) = a "family".
+ *     Each family has up to three variants: 7d, 30d, 90d.
+ *  2. Apply category filter from dropdown.
+ *  3. Fetch ALL variants of all matching families in parallel.
+ *  4. For each family, build a map: primaryKey → {rowData, windows:Set}
+ *     The 7d file's rows get 'in7d', 30d gets 'in30d', 90d gets 'in90d'.
+ *     Since 90d ⊇ 30d ⊇ 7d, an IOC present in 7d will also be in 30d and 90d —
+ *     so we mark all three when the IOC appears in 7d.
+ *     Actually the feeds are independent snapshots, so we just record which file
+ *     it was found in — that directly tells us the last-seen window.
+ *  5. Flatten into result rows, one per (family, primaryKey). Add __windows.
+ *  6. Only include families where any window matched the search query.
+ */
+// ─── Defang normaliser ─────────────────────────────────────────────────────────
+function defang(raw) {
+  return raw
+    .trim()
+    // brackets around dots: 185[.]224[.]171[.]28  →  185.224.171.28
+    .replace(/\[\.\]/g, '.')
+    // brackets around colons: 192[:]168[:]1[:]1  →  192:168:1:1
+    .replace(/\[:\]/g, ':')
+    // brackets around slashes
+    .replace(/\[\/\]/g, '/')
+    // hxxp / hxxps  →  http / https
+    .replace(/\bhxxps?/gi, m => m.replace(/xx/i, 'tt'))
+    // [com] / [net] / [org] / [io] / [edu] / [gov]  →  .com etc.
+    .replace(/\[(com|net|org|io|edu|gov|co|uk|de|ru|cn|info|biz|me)\]/gi, '.$1')
+    // trailing dots that aren't part of the hostname
+    .replace(/\.+$/, '')
+    .trim();
+}
+
+async function runGlobalSearch() {
+  const raw = defang(document.getElementById('searchInput').value);
+  // Write the cleaned value back so the user sees what was searched
+  document.getElementById('searchInput').value = raw;
+  const q = raw.toLowerCase();
+  if (!q) { setTableMsg('Enter a search term and press Enter.'); return; }
+
+  abortGlobal = false;
+  const cat = document.getElementById('catSelect').value;
+
+  // Filter families by category
+  const famSeen = new Set();
+  const families = []; // [{famKey, label, uv, tags, entries:[{win,url}]}]
+  FEEDS.forEach(f => {
+    if (cat==='verified'   && f.uv) return;
+    if (cat==='unverified' && !f.uv) return;
+    if (cat==='c2'  && !f.tags.includes('c2'))  return;
+    if (cat==='kvm' && !f.tags.includes('kvm')) return;
+    if (cat==='rmm' && !f.tags.includes('rmm')) return;
+    const k = familyKey(f);
+    if (!famSeen.has(k)) {
+      famSeen.add(k);
+      families.push({ famKey:k, label:f.label, uv:f.uv, tags:f.tags, entries:[] });
+    }
+    families[families.length-1].entries.push({ win:f.win, url:f.base+f.file });
+  });
+
+  if (!families.length) { setTableMsg('No feeds match the selected category.'); return; }
+
+  // Total fetch count = sum of entries across all families
+  const totalFetches = families.reduce((s,fam)=>s+fam.entries.length, 0);
+
+  const prog = document.getElementById('gsprog');
+  prog.classList.add('visible');
+  const bar = document.getElementById('pb');
+  const lbl = document.getElementById('gsLbl');
+  const cnt = document.getElementById('gsCnt');
+  setTableMsg(`<span class="spinner"></span>Searching across <strong>${families.length}</strong> feed families…`);
+  resetStats();
+  document.getElementById('statFeeds').textContent = '…';
+  document.getElementById('statFeedsSub').textContent = `${families.length} families`;
+
+  let done = 0;
+  const globalRows = [];
+  let famHits = 0;
+
+  // Process families in batches
+  const BATCH = 4; // families per batch (each has up to 3 fetches inside)
+  for (let i = 0; i < families.length; i += BATCH) {
+    if (abortGlobal) break;
+    const batch = families.slice(i, i+BATCH);
+
+    await Promise.all(batch.map(async fam => {
+      if (abortGlobal) return;
+
+      // Fetch all windows for this family concurrently
+      const windowData = {}; // win -> {headers, rows}
+      await Promise.all(fam.entries.map(async ({ win, url }) => {
+        lbl.textContent = `Loading ${fam.label} (${win})…`;
+        let text;
+        try { text = await fetchCSV(url); }
+        catch { /* skip failed */ }
+        finally { done++; bar.style.width = (done/totalFetches*100)+'%'; cnt.textContent = `${done}/${totalFetches}`; }
+        if (text) {
+          const { headers: hdrs, rows } = csvToObjects(text);
+          windowData[win] = { hdrs, rows };
+        }
+      }));
+
+      // Determine primary key column (first column of whatever window loaded first)
+      const anyHdrs = (windowData['7d']||windowData['30d']||windowData['90d']||{}).hdrs;
+      if (!anyHdrs || !anyHdrs.length) return;
+      const pkCol = anyHdrs[0]; // e.g. 'ip' or 'domain'
+
+      // Build map: primaryKey+ioc_col -> {rowData, windows}
+      // Use primaryKey + ioc to distinguish rows where same IP has different ioc text
+      const iocCol = anyHdrs.includes('ioc') ? 'ioc' : null;
+      const rowMap = new Map(); // key -> {data, in7d, in30d, in90d}
+
+      for (const [win, {hdrs, rows}] of Object.entries(windowData)) {
+        for (const r of rows) {
+          // Check if this row matches the query
+          const matches = hdrs.some(h => (r[h]||'').toLowerCase().includes(q));
+          if (!matches) continue;
+          // Build a stable key from the row's primary value + ioc
+          const pk = (r[pkCol]||'') + '|' + (iocCol ? (r[iocCol]||'') : '');
+          if (!rowMap.has(pk)) {
+            rowMap.set(pk, { data: r, hdrs, in7d:false, in30d:false, in90d:false });
+          }
+          const entry = rowMap.get(pk);
+          if (win === '7d')  entry.in7d  = true;
+          if (win === '30d') entry.in30d = true;
+          if (win === '90d') entry.in90d = true;
+        }
+      }
+
+      if (!rowMap.size) return;
+      famHits++;
+
+      // Build list of files that matched (for GitHub links)
+      const matchedFiles = fam.entries
+        .filter(e => windowData[e.win])
+        .map(e => ({ win: e.win, file: e.url.split('/feeds/')[1], uv: fam.uv }));
+
+      for (const { data, hdrs, in7d, in30d, in90d } of rowMap.values()) {
+        const merged = Object.assign({}, data);
+        merged.__family   = fam.label;
+        merged.__uv       = fam.uv;
+        merged.__hdrs     = hdrs;
+        merged.__in7d     = in7d;
+        merged.__in30d    = in30d;
+        merged.__in90d    = in90d;
+        merged.__famFiles = matchedFiles;
+        // Recency score for default sort: 7d=3, 30d only=2, 90d only=1
+        merged.__recency  = in7d ? 3 : in30d ? 2 : 1;
+        globalRows.push(merged);
+      }
+    }));
+
+    await new Promise(r => setTimeout(r, 15));
+  }
+
+  prog.classList.remove('visible');
+  if (abortGlobal) return;
+
+  if (!globalRows.length) {
+    setTableMsg(`No results for <strong>${escH(q)}</strong> across ${families.length} feed families.`);
+    document.getElementById('statFeeds').textContent    = '0';
+    document.getElementById('statFeedsSub').textContent = 'families matched';
+    document.getElementById('statTotal').textContent    = '0';
+    document.getElementById('statMatching').textContent = '0';
+    return;
+  }
+
+  // ── Collapse: one row per unique IP (+ port if present) ────────────────────
+  // Key = ip:port when both exist, else just ip, else domain.
+  // This ensures IP-only and Domain+IP rows for the same host merge into one.
+  // "Richest" row = most non-empty data columns (DomainPortRMM beats DomainRMM).
+  const nonEmptyCols = r => Object.keys(r).filter(k => !k.startsWith('__') && (r[k]||'').trim()).length;
+
+  const collapseKey = r => {
+    const ip   = (r['ip']   || '').trim();
+    const port = (r['port'] || '').trim();
+    const dom  = (r['domain'] || '').trim();
+    if (ip && port) return ip + ':' + port;
+    if (ip)         return ip;
+    return dom;     // fallback for domain-only rows (no ip col at all)
+  };
+
+  const collapseMap = new Map(); // key -> collapsed row
+  globalRows.forEach(r => {
+    const pk = collapseKey(r);
+    if (!collapseMap.has(pk)) {
+      collapseMap.set(pk, Object.assign({}, r, { __families: [{ label: r.__family, uv: r.__uv, files: r.__famFiles || [] }] }));
+    } else {
+      const existing = collapseMap.get(pk);
+      // Union recency
+      if (r.__in7d)  existing.__in7d  = true;
+      if (r.__in30d) existing.__in30d = true;
+      if (r.__in90d) existing.__in90d = true;
+      existing.__recency = existing.__in7d ? 3 : existing.__in30d ? 2 : 1;
+      // Accumulate family badge
+      if (!existing.__families.some(f => f.label === r.__family)) {
+        existing.__families.push({ label: r.__family, uv: r.__uv, files: r.__famFiles || [] });
+      }
+      if (r.__uv) existing.__uv = true;
+      // Promote to richer row: if incoming has more non-empty cols, use its data
+      // but preserve the accumulated meta fields
+      if (nonEmptyCols(r) > nonEmptyCols(existing)) {
+        const meta = {
+          __families: existing.__families,
+          __uv:       existing.__uv,
+          __hdrs:     r.__hdrs,
+          __in7d:     existing.__in7d,
+          __in30d:    existing.__in30d,
+          __in90d:    existing.__in90d,
+          __recency:  existing.__recency,
+        };
+        collapseMap.set(pk, Object.assign({}, r, meta));
+      } else {
+        // Still fill in any columns the existing row is missing
+        Object.keys(r).forEach(k => {
+          if (!k.startsWith('__') && !(existing[k]||'').trim()) existing[k] = r[k];
+        });
+      }
+    }
+  });
+
+  const collapsed = Array.from(collapseMap.values());
+
+  // Sort by recency desc then ip/domain
+  collapsed.sort((a,b) => {
+    if (b.__recency !== a.__recency) return b.__recency - a.__recency;
+    const ka = (a['ip']||a['domain']||'');
+    const kb = (b['ip']||b['domain']||'');
+    return ka.localeCompare(kb, undefined, {numeric:true, sensitivity:'base'});
+  });
+
+  // Unified header set — built from __hdrs of each row so column order matches
+  // the richest source row, with any extra columns appended after.
+  const hdrSet = [], hdrSeen = new Set();
+  collapsed.forEach(r => {
+    const rowHdrs = r.__hdrs || Object.keys(r).filter(k => !k.startsWith('__'));
+    rowHdrs.forEach(h => {
+      if (!h.startsWith('__') && !hdrSeen.has(h)) { hdrSet.push(h); hdrSeen.add(h); }
+    });
+  });
+
+  headers  = hdrSet;
+  allRows  = collapsed;
+  filtered = [...collapsed];
+  sortCol  = null; sortDir = 'asc'; page = 1;
+
+  document.getElementById('statTotal').textContent    = collapsed.length.toLocaleString();
+  document.getElementById('statTotalSub').textContent = 'unique IOCs matched';
+  document.getElementById('statMatching').textContent = collapsed.length.toLocaleString();
+  document.getElementById('statFeeds').textContent    = famHits.toString();
+  document.getElementById('statFeedsSub').textContent = `of ${families.length} families`;
+
+  const hasUV = collapsed.some(r => r.__uv);
+  document.getElementById('uvBanner').style.display = hasUV ? '' : 'none';
+  document.getElementById('legend').style.display   = '';
+
+  renderTable();
+}
+
+// ─── Table renderer ────────────────────────────────────────────────────────────
+function renderTable() {
+  if (!headers.length) return;
+  const wrap  = document.getElementById('tableWrap');
+  const q     = document.getElementById('searchInput').value.trim();
+  const ps    = parseInt(document.getElementById('pageSz').value, 10);
+  pageSize    = ps || filtered.length;
+  const total = filtered.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (page > pages) page = pages;
+  const slice = filtered.slice((page-1)*pageSize, (page-1)*pageSize + pageSize);
+  const isG   = mode === 'global';
+
+  let html = '<table><thead><tr>';
+  if (isG) {
+    html += '<th style="width:200px">Found in<span class="sa"></span></th>';
+    html += '<th style="width:112px;cursor:default">Last seen</th>';
+  }
+  headers.forEach(h => {
+    const cls = sortCol===h ? `sort-${sortDir}` : '';
+    html += `<th class="${cls}" data-col="${escH(h)}">${escH(h)}<span class="sa"></span></th>`;
+  });
+  html += '<th style="width:130px;cursor:default">Lookup</th>';
+  html += '<th style="width:60px;cursor:default">Copy</th></tr></thead><tbody>';
+
+  if (!slice.length) {
+    html += `<tr><td colspan="${headers.length + (isG?4:2)}" class="status-msg">No matching records.</td></tr>`;
+  } else {
+    slice.forEach(row => {
+      html += '<tr>';
+      if (isG) {
+        const fams = row.__families || [{ label: row.__family||'', uv: row.__uv, files: [] }];
+        const GH_BASE = 'https://github.com/drb-ra/C2IntelFeeds/blob/master/feeds/';
+        const famBadges = fams.map(f => {
+          // Pick best file to link to: 7d > 30d > 90d
+          const bestFile = (f.files.find(x => x.win==='7d') || f.files.find(x => x.win==='30d') || f.files[0]);
+          const href = bestFile ? GH_BASE + bestFile.file : null;
+          if (href) {
+            return `<a href="${escH(href)}" target="_blank" rel="noopener noreferrer" class="fam-badge${f.uv?' uv':''}" title="View on GitHub">${escH(f.label)}</a>`;
+          }
+          return `<span class="fam-badge${f.uv?' uv':''}">${escH(f.label)}</span>`;
+        }).join(' ');
+        html += `<td style="white-space:normal;line-height:1.8">${famBadges}</td>`;
+        // Recency pills
+        const p7  = row.__in7d,  p30 = row.__in30d, p90 = row.__in90d;
+        html += `<td><div class="recency">`;
+        html += `<span class="pill p7${p7?'':' dim'}" title="${p7?'Seen in last 7 days':'Not in 7-day feed'}">7d</span>`;
+        html += `<span class="pill p30${p30?'':' dim'}" title="${p30?'Seen in last 30 days':'Not in 30-day feed'}">30d</span>`;
+        html += `<span class="pill p90${p90?'':' dim'}" title="${p90?'Seen in last 90 days':'Not in 90-day feed'}">90d</span>`;
+        html += `</div></td>`;
+      }
+      headers.forEach(h => {
+        const val  = row[h] || '';
+        const disp = q ? hlEsc(val, q) : escH(val);
+        if (h === 'ioc') {
+          html += `<td><span class="ioc-badge" title="${escH(val)}">${disp}</span></td>`;
+        } else if (h === 'ip' && val) {
+          const ev = escH(val);
+          html += `<td class="wc" style="white-space:nowrap">` +
+            `<a href="https://magnify.modat.io/hosts/${ev}" target="_blank" rel="noopener noreferrer" class="ip-link">${disp}</a>` +
+            ` <span class="modat-label">Modat</span>` +
+            `</td>`;
+        } else if (h === 'domain' && val) {
+          const ev = escH(val);
+          html += `<td class="wc" style="white-space:nowrap">` +
+            `<a href="https://app.validin.com/detail?type=dom&find=${ev}" target="_blank" rel="noopener noreferrer" class="ip-link" title="View on Validin">${disp}</a>` +
+            ` <span class="modat-label">Validin</span>` +
+            `</td>`;
+        } else {
+          html += `<td class="wc" title="${escH(val)}">${disp}</td>`;
+        }
+      });
+      const primary = row['ip'] || row['domain'] || row[headers[0]] || '';
+      // Lookup pills — IP tools + domain tools as available
+      const ipVal  = row['ip']     || '';
+      const domVal = row['domain'] || '';
+      const hasLookup = ipVal || domVal;
+      if (hasLookup) {
+        const eip  = escH(ipVal);
+        const edom = escH(domVal);
+        html += `<td style="white-space:nowrap"><span class="ip-links">`;
+        if (ipVal) {
+          html += `<a href="https://platform.censys.io/hosts/${eip}" target="_blank" rel="noopener noreferrer" class="ip-pill">Censys</a>`;
+          html += `<a href="https://www.shodan.io/host/${eip}" target="_blank" rel="noopener noreferrer" class="ip-pill">Shodan</a>`;
+          html += `<a href="https://ipinfo.io/${eip}" target="_blank" rel="noopener noreferrer" class="ip-pill">IPinfo</a>`;
+        }
+        if (domVal) {
+          html += `<a href="https://app.validin.com/detail?type=dom&find=${edom}" target="_blank" rel="noopener noreferrer" class="ip-pill">Validin</a>`;
+        }
+        html += `</span></td>`;
+      } else {
+        html += `<td></td>`;
+      }
+      html += `<td><button class="copy-btn" data-v="${escH(primary)}">Copy</button></td>`;
+      html += '</tr>';
+    });
+  }
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  // Sort
+  wrap.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol===col) sortDir = sortDir==='asc'?'desc':'asc';
+      else { sortCol=col; sortDir='asc'; }
+      sortFiltered();
+      page=1; renderTable();
+    });
+  });
+
+  // Copy
+  wrap.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.dataset.v;
+      const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value=v; ta.style.cssText='position:fixed;opacity:0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      };
+      (navigator.clipboard ? navigator.clipboard.writeText(v).catch(fallback) : Promise.resolve(fallback()))
+        .finally(()=>{ btn.textContent='Copied!'; btn.classList.add('ok');
+          setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('ok'); },1500); });
+    });
+  });
+
+  document.getElementById('prevBtn').disabled = page<=1;
+  document.getElementById('nextBtn').disabled = page>=pages;
+  document.getElementById('pageInfo').textContent =
+    total===0 ? '0 records' : `${page}/${pages} (${total.toLocaleString()})`;
+  document.getElementById('statMatching').textContent = total.toLocaleString();
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+function escH(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function hlEsc(raw, q) {
+  const esc = escH(raw);
+  const eq  = escH(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return esc.replace(new RegExp(eq,'gi'), m=>`<mark>${m}</mark>`);
+}
+function setTableMsg(html) {
+  document.getElementById('tableWrap').innerHTML = `<div class="status-msg">${html}</div>`;
+}
+function resetStats() {
+  ['statTotal','statMatching','statFeeds'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('statTotalSub').textContent = 'in feed';
+  document.getElementById('statFeedsSub').textContent = '—';
+  document.getElementById('pageInfo').textContent = '—';
+  document.getElementById('prevBtn').disabled = true;
+  document.getElementById('nextBtn').disabled = true;
+}
+
+// ─── Events ────────────────────────────────────────────────────────────────────
+document.getElementById('feedSelect').addEventListener('change', e => {
+  if (e.target.value==='') return;
+  loadFeed(FEEDS[parseInt(e.target.value,10)]);
+});
+let stimer;
+document.getElementById('searchInput').addEventListener('input', () => {
+  clearTimeout(stimer);
+  if (mode==='single') stimer = setTimeout(applyFilter, 200);
+});
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key==='Enter' && mode==='global') { pushURLParams(); runGlobalSearch(); }
+});
+document.getElementById('catSelect').addEventListener('change', () => { pushURLParams(); });
+document.getElementById('pageSz').addEventListener('change', ()=>{ page=1; renderTable(); });
+document.getElementById('prevBtn').addEventListener('click', ()=>{ if(page>1){page--;renderTable();} });
+document.getElementById('nextBtn').addEventListener('click', ()=>{ page++;renderTable(); });
+
+// ─── URL param sync ────────────────────────────────────────────────────────────
+function pushURLParams() {
+  const q   = document.getElementById('searchInput').value.trim();
+  const cat = document.getElementById('catSelect').value;
+  const params = new URLSearchParams();
+  if (q)             params.set('q', q);
+  if (cat && cat !== 'all') params.set('cat', cat);
+  const newURL = params.toString()
+    ? location.pathname + '?' + params.toString()
+    : location.pathname;
+  history.replaceState(null, '', newURL);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const q   = params.get('q')   || '';
+  const cat = params.get('cat') || 'all';
+
+  setMode('global');
+
+  if (cat && document.getElementById('catSelect').querySelector(`option[value="${cat}"]`)) {
+    document.getElementById('catSelect').value = cat;
+  }
+  if (q) {
+    document.getElementById('searchInput').value = q;
+    pushURLParams();
+    // Defer until after setMode has finished updating the DOM
+    setTimeout(runGlobalSearch, 0);
+  }
+});
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key==='Enter' && mode==='global') runGlobalSearch();
+});
+document.getElementById('pageSz').addEventListener('change', ()=>{ page=1; renderTable(); });
+document.getElementById('prevBtn').addEventListener('click', ()=>{ if(page>1){page--;renderTable();} });
+document.getElementById('nextBtn').addEventListener('click', ()=>{ page++;renderTable(); });
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  setMode('global');
+});
+</script>
+</body>
+</html>
