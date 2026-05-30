@@ -271,22 +271,8 @@
 <body>
 
 <header>
-  <a class="logo" href="#" aria-label="C2 Intel Feeds">
-    <svg width="120" height="38" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <!-- Shield background -->
-      <path d="M30 4 L56 14 L56 34 C56 48 30 56 30 56 C30 56 4 48 4 34 L4 14 Z" fill="var(--accent)" />
-      <!-- Shield highlight -->
-      <path d="M30 7 L53 16 L53 34 C53 46 30 53 30 53 C30 53 7 46 7 34 L7 16 Z" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
-      <!-- Layers diamond -->
-      <path d="M30 20 L18 26 L30 32 L42 26 Z" fill="white" opacity="0.95"/>
-      <!-- Layer line 2 -->
-      <path d="M18 31 L30 37 L42 31" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.82"/>
-      <!-- Layer line 3 -->
-      <path d="M18 36 L30 42 L42 36" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
-      <!-- Site name -->
-      <text x="68" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700" letter-spacing="-0.3" fill="var(--text)">C2 Intel</text>
-      <text x="68" y="46" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="500" letter-spacing="1.5" fill="var(--accent2)">FEEDS</text>
-    </svg>
+  <a class="logo" href="#">
+    <img src="logo.svg" alt="C2 Intel Feeds" height="38" style="display:block;" />
   </a>
   <div class="mode-tabs">
     <button class="mode-tab"        id="tabSingle" onclick="setMode('single')">Single Feed</button>
@@ -1014,6 +1000,7 @@ function renderTable() {
         }
         if (domVal) {
           html += `<a href="https://app.validin.com/detail?type=dom&find=${edom}" target="_blank" rel="noopener noreferrer" class="ip-pill">Validin</a>`;
+          html += `<a href="https://www.bigdomaindata.com/search.php?q=${edom}" target="_blank" rel="noopener noreferrer" class="ip-pill">Whois</a>`;
         }
         html += `</span></td>`;
       } else {
