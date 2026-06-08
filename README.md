@@ -2,13 +2,14 @@
 
 A zero-dependency, single-page web app that reads **all** CSV feeds from
 [drb-ra/C2IntelFeeds](https://github.com/drb-ra/C2IntelFeeds) — both verified
-and unverified — directly from GitHub raw URLs.
+and unverified — directly from GitHub raw URLs. No build step, no server, no
+dependencies. Deploy to GitHub Pages or Cloudflare Pages in minutes.
 
 ---
 
 ## Time windows
 
-Per the upstream README, the feeds use three time windows based on **last observed activity**:
+Per the upstream README, feeds use three windows based on **last observed activity**:
 
 | Suffix | Window | Meaning |
 |---|---|---|
@@ -16,36 +17,52 @@ Per the upstream README, the feeds use three time windows based on **last observ
 | `-30day` | **30 day** | Seen in the last 30 days |
 | `-90day` | **90 day** | Seen in the last 90 days |
 
-An IOC present in the 7-day feed was active very recently. One only in the
-90-day feed has not been seen in over 30 days.
-
 ---
 
 ## Features
 
 ### Search modes
-- **Search All Feeds** (default) — enter an IP, domain, or keyword and press Enter;
-  fetches **all three time windows** for every matching feed family in parallel,
-  deduplicates by IP (+ port when available), and returns one row per unique indicator
-- **Single Feed** — browse any individual feed via a grouped dropdown; all three
-  time windows available per family
+
+- **Search All Feeds** (default) — enter an IP, domain, or keyword and press Enter.
+  Fetches all three time windows for every matching feed family in parallel,
+  deduplicates by IP + port, and returns **one row per unique indicator**.
+- **Single Feed** — browse any individual feed via a grouped dropdown.
 
 ### Results & recency
-- One row per unique IOC — collapsed across all feed families that matched
-- **Found in** column lists every matching feed family as a badge; each badge
-  links to the corresponding CSV file on GitHub
-- **Last seen** column shows colour-coded recency pills:
+
+- One collapsed row per unique IOC across all matched feed families
+- **Found in** column — each family name is a badge linking to its CSV on GitHub
+- **Last seen** column — colour-coded recency pills:
   - `7d` (green) — seen in the last 7 days
-  - `30d` (blue) — in the 30-day feed (not in 7d = not seen in past week)
-  - `90d` (purple) — in the 90-day feed only (not seen in past 30 days)
+  - `30d` (blue) — in 30-day feed but not 7-day (not seen this week)
+  - `90d` (purple) — in 90-day feed only (not seen in 30+ days)
   - Dimmed pill = not present in that window
 - Results sorted by recency by default (most recent first)
 
-### Enrichment links
-Every row includes direct links to external enrichment tools:
+### CobaltStrike beacon config
 
-**IPs** — the IP value links to [Modat](https://magnify.modat.io) (primary data source),
-with additional lookup pills in the **Lookup** column:
+For any result where the IOC is identified as CobaltStrike and appears in the
+30-day feed, a **🛡 CS Config** badge is shown next to the IP. Hovering over
+it displays a tooltip with the extracted beacon configuration from
+[`C2_configs/cobaltstrike-30day.json`](https://github.com/drb-ra/C2IntelFeeds/blob/master/C2_configs/cobaltstrike-30day.json):
+
+- `BeaconType` — HTTP or HTTPS
+- `C2Server` — C2 callback address and URI path
+- `Port` — listener port
+- `SleepTime` — beacon interval in ms
+- `Jitter` — sleep jitter percentage
+- `HostHeader` — only shown when non-empty
+- `HttpPostUri` — POST callback URI
+- `UserAgent` — beacon user-agent string
+- `Watermark` — CS licence watermark
+
+The config file is fetched once per session and cached. If an IP has multiple
+beacon profiles, all are shown in the tooltip.
+
+### Enrichment links
+
+**IPs** — the IP value links to [Modat](https://magnify.modat.io) (primary data
+source). Additional lookup pills in the **Lookup** column:
 
 | Tool | URL format |
 |---|---|
@@ -54,8 +71,8 @@ with additional lookup pills in the **Lookup** column:
 | [Shodan](https://www.shodan.io) | `https://www.shodan.io/host/<ip>` |
 | [IPinfo](https://ipinfo.io) | `https://ipinfo.io/<ip>` |
 
-**Domains** — the domain value links to [Validin](https://app.validin.com)
-with additional lookup pills:
+**Domains** — the domain value links to [Validin](https://app.validin.com).
+Additional lookup pills:
 
 | Tool | URL format |
 |---|---|
@@ -63,53 +80,68 @@ with additional lookup pills:
 | [Whois / BigDomainData](https://www.bigdomaindata.com) | `https://www.bigdomaindata.com/search.php?q=<domain>` |
 
 ### Search input
-- **Defanging** — fanged IOCs are automatically normalised before searching:
+
+- **Auto-defanging** — fanged IOCs are normalised automatically before searching:
   - `185[.]224[.]171[.]28` → `185.224.171.28`
   - `evil[.]domain[.]com` → `evil.domain.com`
   - `hxxps://malware[.]io` → `https://malware.io`
   - `bad[com]` → `bad.com`
   - Leading/trailing whitespace stripped automatically
-- **Deep-link / URL params** — search state is reflected in the URL for linking
-  from other tools:
-  - `?q=<term>` — pre-populates and auto-runs the search on page load
-  - `?cat=<value>` — sets the category filter (`all`, `verified`, `unverified`,
-    `c2`, `kvm`, `rmm`)
+
+- **Deep-link URL params** — search state is encoded in the URL so results can
+  be linked directly from other tools:
+  - `?q=<term>` — pre-populates the search box and runs automatically on load
+  - `?cat=<value>` — sets category filter: `all`, `verified`, `unverified`,
+    `c2`, `kvm`, `rmm`
   - Example: `?q=185.224.171.28&cat=unverified`
 
 ### Other
+
 - Category filter: All / Verified only / Unverified only / C2 / KVM / RMM
-- Unverified data warning banner shown automatically when unverified results appear
+- Unverified data warning banner shown automatically when relevant
 - Match highlighting in global search results
 - Sortable columns (click any header)
 - Stats cards: mode, total records, matching IOCs, feed families matched
 - Copy-to-clipboard per row (copies IP if present, otherwise domain)
-- Light / dark mode with system-preference detection, persisted to `localStorage`
-- Paginated table (25 / 50 / 100 / 250 / All)
-- Response caching — each CSV file is fetched at most once per browser session
+- Light / dark mode — respects system preference, persisted to `localStorage`
+- Paginated table: 25 / 50 / 100 / 250 / All rows
+- All CSV and JSON files cached in memory — each fetched at most once per session
 - No build step, no dependencies, no server required
 
 ---
 
-## Deploy to Cloudflare Pages (recommended)
+## Deploy to GitHub Pages
 
-### Option A — drag-and-drop (fastest)
+1. Push this folder to a **public** GitHub repository
+2. Go to repo **Settings** → **Pages** → Source: `main` branch, `/ (root)`
+3. Click **Save** — live at `https://<username>.github.io/<repo>/` within seconds
 
-1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Go to **Workers & Pages** → **Create** → **Pages** → **Upload assets**
-3. Drag the entire `c2intel-web/` folder (or a zip of it) into the upload area
-4. Click **Deploy** — your app is live at `<project>.pages.dev` in seconds
+To update: `git add . && git commit -m "update" && git push` — GitHub Pages
+redeploys automatically.
 
-### Option B — GitHub-connected deployment
+> Note: GitHub Pages does not support custom response headers, so the
+> `_headers` file (Cloudflare-specific) is ignored but harmless.
+
+---
+
+## Deploy to Cloudflare Pages
+
+### Option A — drag-and-drop (fastest, no account linking required)
+
+1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com)
+2. **Workers & Pages** → **Create** → **Pages** → **Upload assets**
+3. Drag the `c2intel-web/` folder (or a zip) into the upload area
+4. Click **Deploy** — live at `<project>.pages.dev` in seconds
+
+To update: return to the project → **Deployments** → **Upload assets** → drag
+the updated folder.
+
+### Option B — connected to GitHub (auto-deploy on push)
 
 1. Push this folder to a GitHub repository
-2. In Cloudflare Pages → **Create** → **Connect to Git**
-3. Select your repo
-4. Build settings:
-   - **Build command**: *(leave blank)*
-   - **Build output directory**: `/` (or `.`)
-5. Click **Save and Deploy**
-
-Every `git push` triggers an automatic re-deploy.
+2. Cloudflare Pages → **Create** → **Connect to Git** → select the repo
+3. Build settings: leave **Build command** blank, set **Output directory** to `/`
+4. **Save and Deploy** — every `git push` triggers a re-deploy automatically
 
 ### Option C — Wrangler CLI
 
@@ -119,23 +151,14 @@ wrangler login
 wrangler pages deploy . --project-name c2intel-feeds
 ```
 
-## Deploy to GitHub Pages
-
-1. Push this folder to a public GitHub repository
-2. Go to repo **Settings** → **Pages** → Source: `main` branch, `/ (root)`
-3. Save — live at `https://<username>.github.io/<repo>/`
-
-Note: GitHub Pages does not support custom headers, so the `_headers` file
-(Cloudflare-specific) is ignored but harmless.
-
 ---
 
 ## File structure
 
 ```
 c2intel-web/
-├── index.html   # entire app (HTML + CSS + JS, self-contained)
-├── _headers     # Cloudflare Pages security headers (ignored by GitHub Pages)
+├── index.html   # entire app — HTML, CSS, and JS in one self-contained file
+├── _headers     # Cloudflare Pages security headers (CSP, X-Frame-Options, etc.)
 └── README.md
 ```
 
@@ -143,35 +166,29 @@ c2intel-web/
 
 ## Data sources
 
-Verified feeds:
-```
-https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/<file>.csv
-```
+| Source | URL |
+|---|---|
+| Verified feeds | `https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/<file>.csv` |
+| Unverified feeds | `https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/unverified/<file>.csv` |
+| CS beacon configs | `https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/refs/heads/master/C2_configs/cobaltstrike-30day.json` |
 
-Unverified feeds:
-```
-https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/unverified/<file>.csv
-```
-
-No data is stored or proxied. The browser fetches directly from GitHub's CDN.
-Each file is cached in memory for the duration of the browser session.
+No data is stored or proxied. The browser fetches everything directly from
+GitHub's CDN. All files are cached in memory for the session.
 
 ---
 
 ## Unverified data
 
-Unverified feeds contain IOCs that have **not** been confirmed as malicious C2
-infrastructure. They may include legitimate tools such as Interactsh, Hak5
-Cloud C2, PiKVM, NanoKVM, etc. A warning banner is shown automatically whenever
-unverified data is displayed.
+Unverified feeds contain IOCs that have **not** been confirmed as malicious
+infrastructure. They may include legitimate security tooling such as
+Interactsh, Hak5 Cloud C2, PiKVM, NanoKVM, and similar. A warning banner is
+shown automatically whenever unverified results are displayed.
 
 ---
 
 ## Notes
 
-- GitHub raw URLs do not have CORS restrictions, so direct browser fetch works.
-- The `_headers` file adds `Content-Security-Policy` and other security headers
-  automatically through Cloudflare Pages.
-- Global search fetches feeds in parallel batches of 4 families at a time to
-  stay within browser connection limits while keeping search fast.
-- Data is provided courtesy of [Modat](https://modat.io) from May 2026 onwards.
+- GitHub raw URLs have no CORS restrictions — direct browser fetch works without a proxy.
+- The `_headers` file applies `Content-Security-Policy` and hardening headers via Cloudflare Pages.
+- Global search fetches up to 4 feed families concurrently to stay within browser connection limits.
+- Raw scan data is provided courtesy of [Modat](https://modat.io) from May 2026 onwards.

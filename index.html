@@ -219,6 +219,34 @@
       color: var(--accent2); opacity: .7; vertical-align: middle;
       letter-spacing: .04em; text-transform: uppercase;
     }
+
+    /* CobaltStrike config tooltip */
+    .cs-tip-icon {
+      display: inline-block; cursor: help;
+      font-size: .7rem; font-weight: 700;
+      color: var(--accent); border: 1px solid var(--accent);
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      border-radius: 4px; padding: .06rem .38rem;
+      vertical-align: middle; white-space: nowrap;
+    }
+    #cs-tooltip {
+      display: none;
+      position: fixed;
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: .65rem .85rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+      font-size: .72rem; line-height: 1.55;
+      color: var(--text);
+      box-shadow: 0 4px 20px rgba(0,0,0,.3);
+      z-index: 9999;
+      width: 380px;
+      pointer-events: none;
+    }
+    }
     .ip-links { display: inline-flex; gap: .22rem; vertical-align: middle; }
     .ip-pill {
       display: inline-block; border-radius: 10px;
@@ -382,6 +410,8 @@
   </div>
 
 </main>
+
+<div id="cs-tooltip"></div>
 
 <footer>
   Data sourced from
@@ -613,6 +643,68 @@ async function fetchCSV(url) {
   return t;
 }
 
+// ─── CobaltStrike config map ───────────────────────────────────────────────────
+// Keyed by IP. Loaded once on first Cobalt Strike match.
+const CS_JSON_URL = 'https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/refs/heads/master/C2_configs/cobaltstrike-30day.json';
+let csConfigMap   = null;   // null = not loaded yet, Map after load
+let csConfigLoading = false;
+
+async function loadCSConfigs() {
+  if (csConfigMap) return;
+  if (csConfigLoading) { while (csConfigLoading) await new Promise(r=>setTimeout(r,50)); return; }
+  csConfigLoading = true;
+  try {
+    const res = await fetch(CS_JSON_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    csConfigMap = new Map();
+    // NDJSON — one JSON object per line
+    text.split('\n').forEach(line => {
+      line = line.trim();
+      if (!line) return;
+      try {
+        const obj = JSON.parse(line);
+        const r   = obj.result || obj;
+        const ip  = (r.ip || '').trim();
+        if (!ip) return;
+        // An IP may appear multiple times (multiple beacon configs); store array
+        if (!csConfigMap.has(ip)) csConfigMap.set(ip, []);
+        csConfigMap.get(ip).push(r);
+      } catch { /* skip malformed lines */ }
+    });
+  } catch(e) {
+    csConfigMap = new Map(); // empty map — don't keep retrying
+    console.warn('CS config load failed:', e);
+  } finally {
+    csConfigLoading = false;
+  }
+}
+
+function isCobaltStrikeRow(row) {
+  const ioc = (row['ioc'] || '').toLowerCase();
+  return ioc.includes('cobalt') || ioc.includes('cobaltstrike');
+}
+
+function formatCSTooltip(configs) {
+  const trunc = (v, n=80) => String(v).length > n ? String(v).slice(0, n) + '…' : String(v);
+  const arr   = v => Array.isArray(v) ? v.map(x => trunc(x)).join('\n              ') : trunc(v || '—');
+  return configs.map((c, i) => {
+    const lines = [
+      configs.length > 1 ? `── Config ${i+1} ──` : null,
+      `BeaconType:  ${c.BeaconType   || '—'}`,
+      `C2Server:    ${arr(c.C2Server)}`,
+      `Port:        ${c.Port         || '—'}`,
+      `SleepTime:   ${c.SleepTime    || '—'} ms`,
+      `Jitter:      ${c.Jitter       || '0'}%`,
+      (c.HostHeader && c.HostHeader.trim()) ? `HostHeader:  ${trunc(c.HostHeader)}` : null,
+      `HttpPostUri: ${trunc(c.HttpPostUri || '—')}`,
+      `UserAgent:   ${arr(c.UserAgent)}`,
+      `Watermark:   ${c.Watermark    || '—'}`,
+    ].filter(Boolean);
+    return lines.join('\n');
+  }).join('\n');
+}
+
 // ─── Single feed mode ──────────────────────────────────────────────────────────
 async function loadFeed(f) {
   abortGlobal = true;
@@ -642,6 +734,9 @@ function applyFilter() {
   if (sortCol) sortFiltered();
   page = 1;
   renderTable();
+  // Pre-load CS config if any cobalt strike rows visible
+  const hasCS = filtered.some(r => isCobaltStrikeRow(r));
+  if (hasCS && !csConfigMap) loadCSConfigs().then(() => renderTable());
 }
 
 function sortFiltered() {
@@ -910,6 +1005,12 @@ async function runGlobalSearch() {
   document.getElementById('legend').style.display   = '';
 
   renderTable();
+
+  // If any Cobalt Strike rows are present in 30d/7d, pre-load CS config and re-render
+  const hasCS = collapsed.some(r => isCobaltStrikeRow(r) && (r.__in30d || r.__in7d));
+  if (hasCS && !csConfigMap) {
+    loadCSConfigs().then(() => renderTable());
+  }
 }
 
 // ─── Table renderer ────────────────────────────────────────────────────────────
@@ -969,10 +1070,16 @@ function renderTable() {
         if (h === 'ioc') {
           html += `<td><span class="ioc-badge" title="${escH(val)}">${disp}</span></td>`;
         } else if (h === 'ip' && val) {
-          const ev = escH(val);
+          const ev  = escH(val);
+          // Check for CS config availability (in30d CS rows only)
+          const csMatch = isCobaltStrikeRow(row) && (row.__in30d || row.__in7d)
+                         && csConfigMap && csConfigMap.has(val);
+          const csConfigs = csMatch ? csConfigMap.get(val) : null;
+          const csTip = csConfigs ? escH(formatCSTooltip(csConfigs)) : '';
           html += `<td class="wc" style="white-space:nowrap">` +
             `<a href="https://magnify.modat.io/hosts/${ev}" target="_blank" rel="noopener noreferrer" class="ip-link">${disp}</a>` +
             ` <span class="modat-label">Modat</span>` +
+            (csConfigs ? ` <span class="cs-tip-icon" data-cs="${csTip}">&#x1F6E1; CS Config</span>` : '') +
             `</td>`;
         } else if (h === 'domain' && val) {
           const ev = escH(val);
@@ -1037,6 +1144,38 @@ function renderTable() {
       (navigator.clipboard ? navigator.clipboard.writeText(v).catch(fallback) : Promise.resolve(fallback()))
         .finally(()=>{ btn.textContent='Copied!'; btn.classList.add('ok');
           setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('ok'); },1500); });
+    });
+  });
+
+  // CS config tooltip — position above or below depending on available space
+  const csTip  = document.getElementById('cs-tooltip');
+  wrap.querySelectorAll('.cs-tip-icon').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      csTip.textContent = el.dataset.cs || '';
+      csTip.style.display = 'block';
+      // Measure
+      const rect   = el.getBoundingClientRect();
+      const tipH   = csTip.offsetHeight;
+      const tipW   = csTip.offsetWidth;
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // Vertical: prefer above, fall back to below
+      let top;
+      if (spaceAbove >= tipH + 8) {
+        top = rect.top - tipH - 6;
+      } else {
+        top = rect.bottom + 6;
+      }
+      // Horizontal: align to left of icon, clamp to viewport
+      let left = rect.left;
+      if (left + tipW > window.innerWidth - 8) {
+        left = window.innerWidth - tipW - 8;
+      }
+      csTip.style.top  = top  + 'px';
+      csTip.style.left = left + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      csTip.style.display = 'none';
     });
   });
 
